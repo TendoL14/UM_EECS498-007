@@ -169,11 +169,20 @@ def svm_loss_naive(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: float
                 # at the same time that the loss is being computed.                   #
                 #######################################################################
                 # Replace "pass" statement with your code
-                pass
+                dloss_dscore = torch.zeros(
+                    num_classes,
+                ).cuda()
+                dloss_dscore[j] += 1.0
+                dloss_dscore[y[i]] += -1.0
+                # print(dloss_dscore.shape)
+                # print(X[i].shape)
+                dloss_dW = dloss_dscore.outer(X[i]).t()
+                # print(dloss_dW)
+                dW.add_(dloss_dW)
                 #######################################################################
                 #                       END OF YOUR CODE                              #
                 #######################################################################
-
+    # print(dW.sum())
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
     loss /= num_train
@@ -187,7 +196,8 @@ def svm_loss_naive(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: float
     # and add it to dW. (part 2)                                                #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    dW /= num_train
+    dW += W.mul(reg * 2)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -221,7 +231,19 @@ def svm_loss_vectorized(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: 
     # result in loss.                                                           #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+
+    scores = X.mm(W)
+
+    # Multiclass SVM loss: max(0, s[j]-s[y[i]]+1)
+    idx0 = torch.arange(y.shape[0]).cuda()
+    correct_scores = torch.Tensor(scores[idx0, y])
+    scores_margin = scores.t() - correct_scores.repeat(W.shape[1], 1) + 1
+    scores_margin[y, idx0] -= 1
+
+    loss_ind = torch.max(scores_margin, torch.zeros_like(scores_margin))
+
+    loss = loss_ind.sum() / y.shape[0]
+
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
@@ -236,7 +258,9 @@ def svm_loss_vectorized(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: 
     # loss.                                                                     #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+
+    dloss_ind = 1.0 / y.shape[0]  # Every indice of (C, N) is filled by the same value
+
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
