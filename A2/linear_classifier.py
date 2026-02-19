@@ -232,17 +232,19 @@ def svm_loss_vectorized(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: 
     #############################################################################
     # Replace "pass" statement with your code
 
-    scores = X.mm(W)
+    scores = X.mm(W)  # (N, C)
 
-    # Multiclass SVM loss: max(0, s[j]-s[y[i]]+1)
-    idx0 = torch.arange(y.shape[0]).cuda()
-    correct_scores = torch.Tensor(scores[idx0, y])
-    scores_margin = scores.t() - correct_scores.repeat(W.shape[1], 1) + 1
-    scores_margin[y, idx0] -= 1
+    # Hinge loss: max(0, s[j]-s[y[i]]+1)
+    index = torch.arange(y.shape[0])  # (N,)
+    correct_scores = scores[index, y]  # (N,)
 
-    loss_ind = torch.max(scores_margin, torch.zeros_like(scores_margin))
+    margin = scores - correct_scores.unsqueeze(dim=1) + 1  # (N, C)
+    margin[index, y] = 0
 
-    loss = loss_ind.sum() / y.shape[0]
+    loss_mask = margin > 0
+    margin = margin * loss_mask
+
+    loss = margin.sum() / y.shape[0] + reg * torch.sum(W * W)
 
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -259,7 +261,12 @@ def svm_loss_vectorized(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: 
     #############################################################################
     # Replace "pass" statement with your code
 
-    dloss_ind = 1.0 / y.shape[0]  # Every indice of (C, N) is filled by the same value
+    dmargin = loss_mask.double() / y.shape[0]  # (N, C)
+
+    dscores = dmargin.clone()  # (N, C)
+    dscores[index, y] -= dmargin.sum(dim=1)  # Summing contrib from correct class
+
+    dW = X.t().mm(dscores) + W * reg * 2  # (D, C)
 
     #############################################################################
     #                             END OF YOUR CODE                              #
@@ -283,7 +290,9 @@ def sample_batch(X: torch.Tensor, y: torch.Tensor, num_train: int, batch_size: i
     # Hint: Use torch.randint to generate indices.                          #
     #########################################################################
     # Replace "pass" statement with your code
-    pass
+    index = torch.randint(0, num_train, (batch_size,))
+    X_batch = X[index, :]
+    y_batch = y[index]
     #########################################################################
     #                       END OF YOUR CODE                                #
     #########################################################################
@@ -349,7 +358,9 @@ def train_linear_classifier(
         # Update the weights using the gradient and the learning rate.          #
         #########################################################################
         # Replace "pass" statement with your code
-        pass
+
+        W -= learning_rate * grad
+
         #########################################################################
         #                       END OF YOUR CODE                                #
         #########################################################################
@@ -380,7 +391,7 @@ def predict_linear_classifier(W: torch.Tensor, X: torch.Tensor):
     # Implement this method. Store the predicted labels in y_pred.            #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    y_pred = X.mm(W).argmax(dim=1)
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -406,7 +417,8 @@ def svm_get_search_params():
     # TODO:   add your own hyper parameter lists.                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates = [1.65e-2]
+    regularization_strengths = [1e-5]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -458,7 +470,19 @@ def test_one_param_set(
     # num_iters = 100
 
     # Replace "pass" statement with your code
-    pass
+
+    cls.W = None
+    cls.W, _ = train_linear_classifier(
+        cls.loss, cls.W, data_dict["X_train"], data_dict["y_train"], lr, reg, num_iters
+    )
+
+    y_train_pred = predict_linear_classifier(cls.W, data_dict["X_train"])
+    train_acc = 100.0 * (data_dict["y_train"] == y_train_pred).double().mean().item()
+    # print('Training accuracy: %.2f%%' % train_acc)
+
+    y_val_pred = predict_linear_classifier(cls.W, data_dict["X_val"])
+    val_acc = 100.0 * (data_dict["y_val"] == y_val_pred).double().mean().item()
+
     ############################################################################
     #                            END OF YOUR CODE                              #
     ############################################################################
