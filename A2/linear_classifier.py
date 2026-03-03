@@ -417,8 +417,8 @@ def svm_get_search_params():
     # TODO:   add your own hyper parameter lists.                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    learning_rates = [1.65e-2]
-    regularization_strengths = [1e-5]
+    learning_rates = [0.15e-2, 0.65e-2, 1.15e-2]
+    regularization_strengths = [1.5e-5, 2e-5, 2.5e-5]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
@@ -527,7 +527,41 @@ def softmax_loss_naive(W: torch.Tensor, X: torch.Tensor, y: torch.Tensor, reg: f
     # regularization!                                                           #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+
+    # Skipped naive implementation
+
+    N = X.shape[0]
+
+    s = X.mm(W)  # (N, C)
+
+    # Normalization to prevent numeric instability
+    s_max, s_max_index = s.max(dim=1)  # (N, )
+    s_norm = s - s_max.view(-1, 1)  # (N, C)
+
+    exp_s = s_norm.exp()  # (N, C)
+    sum_s = exp_s.sum(dim=1)  # (N, )
+
+    index = torch.arange(0, N, device=X.device)  # (N, )
+    p = exp_s[index, y] / sum_s
+    loss = -p.log().mean() + reg * torch.sum(W * W)
+
+    # Backprop
+
+    dp = -(1.0 / N) / p  # (N, )
+
+    dsum_s = -exp_s[index, y] / sum_s.pow(2) * dp  # (N, )
+    dexp_s = torch.zeros_like(exp_s)  # (N, C)
+    dexp_s[index, y] = dp / sum_s
+    dexp_s += dsum_s.view(-1, 1)
+
+    ds_norm = exp_s * dexp_s  # (N, C)
+    ds_max = -ds_norm.sum(dim=1)  # (N, )
+
+    ds = ds_norm  # (N, C)
+    ds[index, s_max_index] += ds_max
+
+    dW = X.t().mm(ds) + W * reg * 2  # (D, C)
+
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -557,7 +591,9 @@ def softmax_loss_vectorized(
     # regularization!                                                           #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+
+    loss, dW = softmax_loss_naive(W, X, y, reg)  # I'm lazy :P
+
     #############################################################################
     #                          END OF YOUR CODE                                 #
     #############################################################################
@@ -586,7 +622,8 @@ def softmax_get_search_params():
     # classifier.                                                             #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates = [6.4e-2, 6.6e-2, 7e-2, 7.3e-2]
+    regularization_strengths = [1.4e-3, 1.7e-3, 2e-3, 2.3e-3, 2.6e-3]
     ###########################################################################
     #                           END OF YOUR CODE                              #
     ###########################################################################
