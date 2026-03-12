@@ -2,6 +2,7 @@
 Implements a two-layer Neural Network classifier in PyTorch.
 WARNING: you SHOULD NOT use ".to()" or ".cuda()" in each implementation block.
 """
+
 import torch
 import random
 import statistics
@@ -147,7 +148,10 @@ def nn_forward_pass(params: Dict[str, torch.Tensor], X: torch.Tensor):
     # shape (N, C).                                                            #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+    hidden_0 = X.mm(W1) + b1
+    hidden = hidden_0.clamp(min=0)
+
+    scores = hidden.mm(W2) + b2
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -159,7 +163,7 @@ def nn_forward_backward(
     params: Dict[str, torch.Tensor],
     X: torch.Tensor,
     y: Optional[torch.Tensor] = None,
-    reg: float = 0.0
+    reg: float = 0.0,
 ):
     """
     Compute the loss and gradients for a two layer fully connected neural
@@ -212,7 +216,19 @@ def nn_forward_backward(
     # (Check Numeric Stability in http://cs231n.github.io/linear-classify/).   #
     ############################################################################
     # Replace "pass" statement with your code
-    pass
+
+    # Normalization to prevent numeric instability
+
+    s_max, s_max_index = scores.max(dim=1)  # (N, )
+    s_norm = scores - s_max.view(-1, 1)  # (N, C)
+
+    exp_s = s_norm.exp()  # (N, C)
+    sum_s = exp_s.sum(dim=1)  # (N, )
+
+    index = torch.arange(0, N, device=X.device)  # (N, )
+    p = exp_s[index, y] / sum_s
+    loss = -p.log().mean() + reg * (torch.sum(W1 * W1) + torch.sum(W2 * W2))
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -226,7 +242,36 @@ def nn_forward_backward(
     # tensor of same size                                                     #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+
+    dp = -(1.0 / N) / p  # (N, )
+
+    dsum_s = -exp_s[index, y] / sum_s.pow(2) * dp  # (N, )
+    dexp_s = torch.zeros_like(exp_s)  # (N, C)
+    dexp_s[index, y] = dp / sum_s
+    dexp_s += dsum_s.view(-1, 1)
+
+    ds_norm = exp_s * dexp_s  # (N, C)
+    ds_max = -ds_norm.sum(dim=1)  # (N, )
+
+    ds = ds_norm  # (N, C)
+    ds[index, s_max_index] += ds_max
+
+    # second layer
+    dW2 = h1.t().mm(ds) + W2 * reg * 2  # (H, C)
+    grads["W2"] = dW2
+    db2 = ds.sum(dim=0)  # (C, )
+    grads["b2"] = db2
+
+    # ReLU
+    dh1 = ds.mm(W2.t())  # (N, H)
+    dh1[h1 <= 0] = 0
+
+    # first layer
+    dW1 = X.t().mm(dh1) + W1 * reg * 2  # (D, H)
+    grads["W1"] = dW1
+    db1 = dh1.sum(dim=0)  # (H, )
+    grads["b1"] = db1
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -335,9 +380,7 @@ def nn_train(
     }
 
 
-def nn_predict(
-    params: Dict[str, torch.Tensor], loss_func: Callable, X: torch.Tensor
-):
+def nn_predict(params: Dict[str, torch.Tensor], loss_func: Callable, X: torch.Tensor):
     """
     Use the trained weights of this two-layer network to predict labels for
     data points. For each data point we predict scores for each of the C
@@ -412,9 +455,7 @@ def nn_get_search_params():
     )
 
 
-def find_best_net(
-    data_dict: Dict[str, torch.Tensor], get_param_set_fn: Callable
-):
+def find_best_net(data_dict: Dict[str, torch.Tensor], get_param_set_fn: Callable):
     """
     Tune hyperparameters using the validation set.
     Store your best trained TwoLayerNet model in best_net, with the return value
