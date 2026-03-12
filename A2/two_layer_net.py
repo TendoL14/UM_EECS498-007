@@ -352,7 +352,8 @@ def nn_train(
         # stored in the grads dictionary defined above.                         #
         #########################################################################
         # Replace "pass" statement with your code
-        pass
+        for name in ["W1", "b1", "W2", "b2"]:
+            params[name] -= learning_rate * grads[name]
         #########################################################################
         #                             END OF YOUR CODE                          #
         #########################################################################
@@ -408,7 +409,7 @@ def nn_predict(params: Dict[str, torch.Tensor], loss_func: Callable, X: torch.Te
     # TODO: Implement this function; it should be VERY simple!                #
     ###########################################################################
     # Replace "pass" statement with your code
-    pass
+    y_pred = loss_func(params, X, y=None, reg=0.0).argmax(dim=1)
     ###########################################################################
     #                              END OF YOUR CODE                           #
     ###########################################################################
@@ -501,7 +502,10 @@ def find_best_net(data_dict: Dict[str, torch.Tensor], get_param_set_fn: Callable
     # automatically like we did on the previous exercises.                      #
     #############################################################################
     # Replace "pass" statement with your code
-    pass
+    learning_rates, hidden_sizes, regularization_strengths, learning_rate_decays = (
+        nn_get_search_params()
+    )
+
     #############################################################################
     #                               END OF YOUR CODE                            #
     #############################################################################
