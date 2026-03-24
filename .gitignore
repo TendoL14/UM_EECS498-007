@@ -1,6 +1,9 @@
 # pycaches
 */__pycache__/
 
+# A2
+/Assignments/A2/cifar-10-batches-py
+
 # A3
 /Assignments/A3/best_two_layer_net.pth
 /Assignments/A3/cifar-10-python.tar.gz
@@ -14,6 +17,7 @@ __pycache__/
 # Zipped files
 *.tar.gz
 *.pth
+*.pt
 
 # C extensions
 *.so
