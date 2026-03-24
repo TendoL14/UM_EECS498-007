@@ -17,6 +17,7 @@ __pycache__/
 
 # Zipped files
 *.tar.gz
+*.pth
 
 # C extensions
 *.so
