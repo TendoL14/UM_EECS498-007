@@ -1,14 +1,10 @@
 # pycaches
 */__pycache__/
 
-# A2
-A2/cifar-10-python.tar.gz
-A2/cifar-10-batches-py/
-
 # A3
-A3/best_two_layer_net.pth
-A3/cifar-10-python.tar.gz
-A3/cifar-10-batches-py
+/Assignments/A3/best_two_layer_net.pth
+/Assignments/A3/cifar-10-python.tar.gz
+/Assignments/A3/cifar-10-batches-py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
